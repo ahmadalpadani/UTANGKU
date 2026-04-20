@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
@@ -36,44 +35,38 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _setupPin() async {
-    // Phase 1: Setup screen
     final pin = await Navigator.push<String>(
       context,
       MaterialPageRoute(
-        builder: (context) => LockScreen(
+        builder: (ctx) => LockScreen(
           mode: LockScreenMode.setup,
           onPinEntered: (enteredPin) {
-            // Pop setup screen and return the PIN
-            Navigator.pop(context, enteredPin);
+            Navigator.pop(ctx, enteredPin);
           },
         ),
       ),
     );
 
-    if (pin == null || !mounted) return;
+    if (pin == null) return;
 
-    // Phase 2: Confirm screen
     final confirmed = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (context) => LockScreen(
+        builder: (ctx) => LockScreen(
           mode: LockScreenMode.confirm,
           initialPin: pin,
-          onSuccess: () {
-            Navigator.pop(context, true);
-          },
+          onSuccess: () => Navigator.pop(ctx, true),
         ),
       ),
     );
 
-    if (confirmed == true && mounted) {
+    if (confirmed == true) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('PIN berhasil disimpan!'),
           backgroundColor: AppTheme.success,
         ),
       );
-      setState(() {});
     }
   }
 
@@ -182,7 +175,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (_biometricAvailable && !kIsWeb)
+                      if (_biometricAvailable)
                         Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: Switch(

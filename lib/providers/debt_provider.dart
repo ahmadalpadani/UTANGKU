@@ -4,20 +4,12 @@ import 'package:utangku_app/database/database_service.dart';
 import 'package:utangku_app/models/debt_model.dart';
 import 'package:utangku_app/models/debt_type.dart';
 import 'package:utangku_app/models/payment_status.dart';
-import 'package:utangku_app/services/mock_debt_service.dart';
 import 'package:utangku_app/services/notification_service.dart';
 import 'package:utangku_app/utils/constants.dart';
 
 class DebtProvider with ChangeNotifier {
   final DatabaseService _dbService = DatabaseService();
-  final MockDebtService _mockService = MockDebtService();
   final NotificationService _notificationService = NotificationService();
-
-  // Use mock data for web platform
-  bool get _useMockData {
-    if (kIsWeb) return true;
-    return false;
-  }
 
   List<DebtModel> _allDebts = [];
   List<DebtModel> _utangList = [];
@@ -51,7 +43,6 @@ class DebtProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
 
-  // Notification getters
   bool get notificationsEnabled => _notificationsEnabled;
   bool get dueDateReminders => _dueDateReminders;
   bool get overdueAlerts => _overdueAlerts;
@@ -78,19 +69,15 @@ class DebtProvider with ChangeNotifier {
     return (unpaidCount / _totalCount) * 100;
   }
 
-  // Load notification settings from SharedPreferences
   Future<void> _loadNotificationSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       _notificationsEnabled = prefs.getBool(AppConstants.keyNotificationsEnabled) ?? true;
       _dueDateReminders = prefs.getBool(AppConstants.keyDueDateReminders) ?? true;
       _overdueAlerts = prefs.getBool(AppConstants.keyOverdueAlerts) ?? true;
-    } catch (_) {
-      // Use defaults if prefs fail
-    }
+    } catch (_) {}
   }
 
-  // Save notification settings
   Future<void> _saveNotificationSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
@@ -100,7 +87,6 @@ class DebtProvider with ChangeNotifier {
     } catch (_) {}
   }
 
-  // Toggle notifications on/off
   Future<void> setNotificationsEnabled(bool value) async {
     _notificationsEnabled = value;
     await _saveNotificationSettings();
@@ -112,7 +98,6 @@ class DebtProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle due date reminders
   Future<void> setDueDateReminders(bool value) async {
     _dueDateReminders = value;
     await _saveNotificationSettings();
@@ -122,7 +107,6 @@ class DebtProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Toggle overdue alerts
   Future<void> setOverdueAlerts(bool value) async {
     _overdueAlerts = value;
     await _saveNotificationSettings();
@@ -132,61 +116,35 @@ class DebtProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // Load all data
   Future<void> loadAllData() async {
     _setLoading(true);
     await _loadNotificationSettings();
 
     try {
-      if (_useMockData) {
-        _allDebts = await _mockService.getAllDebts();
-        _utangList = await _mockService.getDebtsByType(AppConstants.debtTypeUtang);
-        _piutangList = await _mockService.getDebtsByType(AppConstants.debtTypePiutang);
-        _unpaidDebts = await _mockService.getUnpaidDebts();
-        _totalUnpaidUtang = await _mockService.getTotalUnpaidUtang();
-        _totalUnpaidPiutang = await _mockService.getTotalUnpaidPiutang();
+      _allDebts = await _dbService.getAllDebts();
+      _utangList = await _dbService.getDebtsByType(AppConstants.debtTypeUtang);
+      _piutangList = await _dbService.getDebtsByType(AppConstants.debtTypePiutang);
+      _unpaidDebts = await _dbService.getUnpaidDebts();
+      _totalUnpaidUtang = await _dbService.getTotalUnpaidUtang();
+      _totalUnpaidPiutang = await _dbService.getTotalUnpaidPiutang();
 
-        // Load statistics
-        final monthly = await _mockService.getMonthlyTotals();
-        _monthlyTotals.clear();
-        _monthlyTotals.addAll(monthly);
+      // Load statistics
+      final monthly = await _dbService.getMonthlyTotals();
+      _monthlyTotals.clear();
+      _monthlyTotals.addAll(monthly);
 
-        final statusCounts = await _mockService.getStatusCounts();
-        _statusCounts['LUNAS'] = statusCounts['LUNAS'] ?? 0;
-        _statusCounts['BELUM_LUNAS'] = statusCounts['BELUM_LUNAS'] ?? 0;
+      final statusCounts = await _dbService.getStatusCounts();
+      _statusCounts['LUNAS'] = statusCounts['LUNAS'] ?? 0;
+      _statusCounts['BELUM_LUNAS'] = statusCounts['BELUM_LUNAS'] ?? 0;
 
-        final typeCounts = await _mockService.getTypeCounts();
-        _typeCounts['UTANG'] = typeCounts['UTANG'] ?? 0;
-        _typeCounts['PIUTANG'] = typeCounts['PIUTANG'] ?? 0;
+      final typeCounts = await _dbService.getTypeCounts();
+      _typeCounts['UTANG'] = typeCounts['UTANG'] ?? 0;
+      _typeCounts['PIUTANG'] = typeCounts['PIUTANG'] ?? 0;
 
-        _totalCount = await _mockService.getTotalCount();
-        _averageAmount = await _mockService.getAverageAmount();
-      } else {
-        _allDebts = await _dbService.getAllDebts();
-        _utangList = await _dbService.getDebtsByType(AppConstants.debtTypeUtang);
-        _piutangList = await _dbService.getDebtsByType(AppConstants.debtTypePiutang);
-        _unpaidDebts = await _dbService.getUnpaidDebts();
-        _totalUnpaidUtang = await _dbService.getTotalUnpaidUtang();
-        _totalUnpaidPiutang = await _dbService.getTotalUnpaidPiutang();
+      _totalCount = await _dbService.getTotalCount();
+      _averageAmount = await _dbService.getAverageAmount();
 
-        // Load statistics
-        final monthly = await _dbService.getMonthlyTotals();
-        _monthlyTotals.clear();
-        _monthlyTotals.addAll(monthly);
-
-        final statusCounts = await _dbService.getStatusCounts();
-        _statusCounts['LUNAS'] = statusCounts['LUNAS'] ?? 0;
-        _statusCounts['BELUM_LUNAS'] = statusCounts['BELUM_LUNAS'] ?? 0;
-
-        final typeCounts = await _dbService.getTypeCounts();
-        _typeCounts['UTANG'] = typeCounts['UTANG'] ?? 0;
-        _typeCounts['PIUTANG'] = typeCounts['PIUTANG'] ?? 0;
-
-        _totalCount = await _dbService.getTotalCount();
-        _averageAmount = await _dbService.getAverageAmount();
-      }
-
-      // Schedule notifications for unpaid debts with due dates
+      // Schedule notifications for unpaid debts with due dates (native only)
       if (_notificationsEnabled && !kIsWeb) {
         await _notificationService.scheduleAllReminders(_unpaidDebts);
       }
@@ -199,18 +157,12 @@ class DebtProvider with ChangeNotifier {
     }
   }
 
-  // Add new debt
   Future<bool> addDebt(DebtModel debt) async {
     _setLoading(true);
     try {
-      if (_useMockData) {
-        await _mockService.createDebt(debt);
-      } else {
-        await _dbService.createDebt(debt);
-      }
+      await _dbService.createDebt(debt);
       await loadAllData();
 
-      // Schedule notification for new debt
       if (_notificationsEnabled && !kIsWeb && debt.dueDate != null) {
         await _notificationService.scheduleDueDateReminder(debt);
       }
@@ -224,18 +176,12 @@ class DebtProvider with ChangeNotifier {
     }
   }
 
-  // Update existing debt
   Future<bool> updateDebt(DebtModel debt) async {
     _setLoading(true);
     try {
-      if (_useMockData) {
-        await _mockService.updateDebt(debt);
-      } else {
-        await _dbService.updateDebt(debt);
-      }
+      await _dbService.updateDebt(debt);
       await loadAllData();
 
-      // Reschedule notification
       if (debt.id != null) {
         await _notificationService.cancelReminder(debt.id!);
         if (_notificationsEnabled && !kIsWeb && debt.dueDate != null) {
@@ -252,19 +198,11 @@ class DebtProvider with ChangeNotifier {
     }
   }
 
-  // Delete debt
   Future<bool> deleteDebt(int id) async {
     _setLoading(true);
     try {
-      if (_useMockData) {
-        await _mockService.deleteDebt(id);
-      } else {
-        await _dbService.deleteDebt(id);
-      }
-
-      // Cancel notification for deleted debt
+      await _dbService.deleteDebt(id);
       await _notificationService.cancelReminder(id);
-
       await loadAllData();
       _errorMessage = null;
       return true;
@@ -275,24 +213,14 @@ class DebtProvider with ChangeNotifier {
     }
   }
 
-  // Toggle payment status
   Future<bool> togglePaymentStatus(int id, PaymentStatus currentStatus) async {
     _setLoading(true);
     try {
-      if (_useMockData) {
-        if (currentStatus == PaymentStatus.belumLunas) {
-          await _mockService.markAsPaid(id);
-        } else {
-          await _mockService.markAsUnpaid(id);
-        }
+      if (currentStatus == PaymentStatus.belumLunas) {
+        await _dbService.markAsPaid(id);
+        await _notificationService.cancelReminder(id);
       } else {
-        if (currentStatus == PaymentStatus.belumLunas) {
-          await _dbService.markAsPaid(id);
-          // Cancel notification when marked as paid
-          await _notificationService.cancelReminder(id);
-        } else {
-          await _dbService.markAsUnpaid(id);
-        }
+        await _dbService.markAsUnpaid(id);
       }
       await loadAllData();
       _errorMessage = null;
@@ -304,38 +232,24 @@ class DebtProvider with ChangeNotifier {
     }
   }
 
-  // Search debts
   Future<List<DebtModel>> searchDebts(String query) async {
     if (query.isEmpty) return _allDebts;
-    if (_useMockData) {
-      return await _mockService.searchDebts(query);
-    }
     return await _dbService.searchDebts(query);
   }
 
-  // Get overdue debts
   Future<List<DebtModel>> getOverdueDebts() async {
-    if (_useMockData) {
-      return await _mockService.getOverdueDebts();
-    }
     return await _dbService.getOverdueDebts();
   }
 
-  // Get debts by type
   Future<List<DebtModel>> getDebtsByType(DebtType type) async {
     if (type == DebtType.utang) return _utangList;
     return _piutangList;
   }
 
-  // Get debts by status
   Future<List<DebtModel>> getDebtsByStatus(PaymentStatus status) async {
-    if (_useMockData) {
-      return await _mockService.getDebtsByStatus(status.value);
-    }
     return await _dbService.getDebtsByStatus(status.value);
   }
 
-  // Get statistics
   Map<String, double> getStatistics() {
     return {
       'totalUtang': _totalUnpaidUtang,
@@ -344,13 +258,11 @@ class DebtProvider with ChangeNotifier {
     };
   }
 
-  // Helper method to set loading state
   void _setLoading(bool value) {
     _isLoading = value;
     notifyListeners();
   }
 
-  // Clear error message
   void clearError() {
     _errorMessage = null;
     notifyListeners();

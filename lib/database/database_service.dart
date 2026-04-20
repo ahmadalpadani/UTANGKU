@@ -144,6 +144,7 @@ class DatabaseService {
       WHERE type = ? AND status = ?
     ''', [type, status]);
 
+    if (result.isEmpty) return 0.0;
     return (result.first['total'] as num?)?.toDouble() ?? 0.0;
   }
 
@@ -178,27 +179,25 @@ class DatabaseService {
   // Statistics - Monthly totals grouped by month (last 6 months)
   Future<Map<String, Map<String, double>>> getMonthlyTotals() async {
     final db = await _dbHelper.database;
+    final allDebts = await db.query(AppConstants.tableDebts);
+
+    final Map<String, Map<String, double>> monthlyData = {};
     final now = DateTime.now();
     final sixMonthsAgo = DateTime(now.year, now.month - 5, 1);
 
-    final result = await db.rawQuery('''
-      SELECT
-        strftime('%Y-%m', created_at) as month,
-        type,
-        SUM(amount) as total
-      FROM ${AppConstants.tableDebts}
-      WHERE created_at >= ?
-      GROUP BY month, type
-      ORDER BY month ASC
-    ''', [sixMonthsAgo.toIso8601String()]);
+    for (final row in allDebts) {
+      final createdAtStr = row['created_at'] as String?;
+      if (createdAtStr == null) continue;
 
-    final Map<String, Map<String, double>> monthlyData = {};
-    for (final row in result) {
-      final month = row['month'] as String;
+      final createdAt = DateTime.tryParse(createdAtStr);
+      if (createdAt == null || createdAt.isBefore(sixMonthsAgo)) continue;
+
+      final monthKey = '${createdAt.year}-${createdAt.month.toString().padLeft(2, '0')}';
       final type = row['type'] as String;
-      final total = (row['total'] as num?)?.toDouble() ?? 0.0;
-      monthlyData[month] ??= {'UTANG': 0.0, 'PIUTANG': 0.0};
-      monthlyData[month]![type] = total;
+      final amount = (row['amount'] as num?)?.toDouble() ?? 0.0;
+
+      monthlyData[monthKey] ??= {'UTANG': 0.0, 'PIUTANG': 0.0};
+      monthlyData[monthKey]![type] = (monthlyData[monthKey]![type] ?? 0.0) + amount;
     }
     return monthlyData;
   }
@@ -213,8 +212,13 @@ class DatabaseService {
     ''');
 
     final Map<String, int> counts = {'LUNAS': 0, 'BELUM_LUNAS': 0};
+    if (result.isEmpty) return counts;
     for (final row in result) {
-      counts[row['status'] as String] = row['count'] as int;
+      final status = row['status'] as String?;
+      final count = row['count'] as int?;
+      if (status != null && count != null) {
+        counts[status] = count;
+      }
     }
     return counts;
   }
@@ -229,8 +233,13 @@ class DatabaseService {
     ''');
 
     final Map<String, int> counts = {'UTANG': 0, 'PIUTANG': 0};
+    if (result.isEmpty) return counts;
     for (final row in result) {
-      counts[row['type'] as String] = row['count'] as int;
+      final type = row['type'] as String?;
+      final count = row['count'] as int?;
+      if (type != null && count != null) {
+        counts[type] = count;
+      }
     }
     return counts;
   }
@@ -241,6 +250,7 @@ class DatabaseService {
     final result = await db.rawQuery(
       'SELECT COUNT(*) as count FROM ${AppConstants.tableDebts}',
     );
+    if (result.isEmpty) return 0;
     return (result.first['count'] as int?) ?? 0;
   }
 
@@ -250,6 +260,7 @@ class DatabaseService {
     final result = await db.rawQuery(
       'SELECT AVG(amount) as avg FROM ${AppConstants.tableDebts}',
     );
+    if (result.isEmpty) return 0.0;
     return (result.first['avg'] as num?)?.toDouble() ?? 0.0;
   }
 }

@@ -50,6 +50,7 @@ class _DebtListScreenState extends State<DebtListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_utang',
         onPressed: () {
           Navigator.push(
             context,

@@ -91,82 +91,80 @@ class _AddDebtScreenState extends State<AddDebtScreen> {
     }
   }
 
-  void _saveDebt() {
-    if (_formKey.currentState!.validate()) {
-      try {
-        // Clean the amount input
-        final amountText = _amountController.text.trim().replaceAll('.', '');
-        final amount = double.parse(amountText);
+  Future<void> _saveDebt() async {
+    if (!_formKey.currentState!.validate()) return;
 
-        final debt = DebtModel(
-          id: widget.existingDebt?.id,
-          name: _nameController.text.trim(),
-          amount: amount,
-          type: widget.isUtang ? DebtType.utang : DebtType.piutang,
-          category: _selectedCategory,
-          description: _descriptionController.text.trim().isEmpty
-              ? null
-              : _descriptionController.text.trim(),
-          dueDate: _dueDate,
-          status: widget.existingDebt?.status ?? PaymentStatus.belumLunas,
-          phoneNumber: _phoneController.text.trim().isEmpty
-              ? null
-              : _phoneController.text.trim(),
-        );
+    final provider = Provider.of<DebtProvider>(context, listen: false);
 
-        final provider = Provider.of<DebtProvider>(context, listen: false);
+    // Show loading overlay
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
 
-        if (widget.existingDebt != null) {
-          provider.updateDebt(debt).then((success) {
-            if (success && mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Data berhasil diperbarui!'),
-                  backgroundColor: AppTheme.success,
-                ),
-              );
-            } else if (mounted && provider.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(provider.errorMessage!),
-                  backgroundColor: AppTheme.error,
-                ),
-              );
-              provider.clearError();
-            }
-          });
-        } else {
-          provider.addDebt(debt).then((success) {
-            if (success && mounted) {
-              Navigator.pop(context);
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    '${widget.isUtang ? "Utang" : "Piutang"} berhasil ditambahkan!',
-                  ),
-                  backgroundColor: AppTheme.success,
-                ),
-              );
-            } else if (mounted && provider.errorMessage != null) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(provider.errorMessage!),
-                  backgroundColor: AppTheme.error,
-                ),
-              );
-              provider.clearError();
-            }
-          });
-        }
-      } catch (e) {
+    try {
+      final amountText = _amountController.text.trim().replaceAll('.', '');
+      final amount = double.parse(amountText);
+
+      final debt = DebtModel(
+        id: widget.existingDebt?.id,
+        name: _nameController.text.trim(),
+        amount: amount,
+        type: widget.isUtang ? DebtType.utang : DebtType.piutang,
+        category: _selectedCategory,
+        description: _descriptionController.text.trim().isEmpty
+            ? null
+            : _descriptionController.text.trim(),
+        dueDate: _dueDate,
+        status: widget.existingDebt?.status ?? PaymentStatus.belumLunas,
+        phoneNumber: _phoneController.text.trim().isEmpty
+            ? null
+            : _phoneController.text.trim(),
+      );
+
+      bool success;
+      if (widget.existingDebt != null) {
+        success = await provider.updateDebt(debt);
+      } else {
+        success = await provider.addDebt(debt);
+      }
+
+      if (!mounted) return;
+
+      // Close loading dialog
+      Navigator.pop(context);
+
+      if (success) {
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error: $e'),
+            content: Text(
+              widget.existingDebt != null
+                  ? 'Data berhasil diperbarui!'
+                  : '${widget.isUtang ? "Utang" : "Piutang"} berhasil ditambahkan!',
+            ),
+            backgroundColor: AppTheme.success,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(provider.errorMessage ?? 'Terjadi kesalahan'),
             backgroundColor: AppTheme.error,
           ),
         );
+        provider.clearError();
       }
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.pop(context); // close loading
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: AppTheme.error,
+        ),
+      );
     }
   }
 

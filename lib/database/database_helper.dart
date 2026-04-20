@@ -9,7 +9,6 @@ class DatabaseHelper {
 
   DatabaseHelper._init();
 
-  // Initialize database explicitly
   Future<void> init() async {
     if (_isInitialized) return;
     await database;
@@ -71,9 +70,7 @@ class DatabaseHelper {
   }
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    if (oldVersion < 2) {
-      // Future upgrades
-    }
+    if (oldVersion < 2) {}
   }
 
   Future<void> close() async {

@@ -50,6 +50,7 @@ class _PiutangListScreenState extends State<PiutangListScreen> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'fab_piutang',
         onPressed: () {
           Navigator.push(
             context,

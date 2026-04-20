@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utangku_app/database/database_helper.dart';
@@ -25,7 +25,8 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _initializeApp() async {
     try {
-      // Skip database initialization on web platform
+      // Only initialize database on native (iOS/Android)
+      // Web uses sqflite_common_ffi which requires simulator
       if (!kIsWeb) {
         await DatabaseHelper.instance.init();
       }
