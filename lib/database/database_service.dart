@@ -174,4 +174,82 @@ class DatabaseService {
     );
     return List.generate(maps.length, (i) => DebtModel.fromMap(maps[i]));
   }
+
+  // Statistics - Monthly totals grouped by month (last 6 months)
+  Future<Map<String, Map<String, double>>> getMonthlyTotals() async {
+    final db = await _dbHelper.database;
+    final now = DateTime.now();
+    final sixMonthsAgo = DateTime(now.year, now.month - 5, 1);
+
+    final result = await db.rawQuery('''
+      SELECT
+        strftime('%Y-%m', created_at) as month,
+        type,
+        SUM(amount) as total
+      FROM ${AppConstants.tableDebts}
+      WHERE created_at >= ?
+      GROUP BY month, type
+      ORDER BY month ASC
+    ''', [sixMonthsAgo.toIso8601String()]);
+
+    final Map<String, Map<String, double>> monthlyData = {};
+    for (final row in result) {
+      final month = row['month'] as String;
+      final type = row['type'] as String;
+      final total = (row['total'] as num?)?.toDouble() ?? 0.0;
+      monthlyData[month] ??= {'UTANG': 0.0, 'PIUTANG': 0.0};
+      monthlyData[month]![type] = total;
+    }
+    return monthlyData;
+  }
+
+  // Statistics - Count by status
+  Future<Map<String, int>> getStatusCounts() async {
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery('''
+      SELECT status, COUNT(*) as count
+      FROM ${AppConstants.tableDebts}
+      GROUP BY status
+    ''');
+
+    final Map<String, int> counts = {'LUNAS': 0, 'BELUM_LUNAS': 0};
+    for (final row in result) {
+      counts[row['status'] as String] = row['count'] as int;
+    }
+    return counts;
+  }
+
+  // Statistics - Count by type
+  Future<Map<String, int>> getTypeCounts() async {
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery('''
+      SELECT type, COUNT(*) as count
+      FROM ${AppConstants.tableDebts}
+      GROUP BY type
+    ''');
+
+    final Map<String, int> counts = {'UTANG': 0, 'PIUTANG': 0};
+    for (final row in result) {
+      counts[row['type'] as String] = row['count'] as int;
+    }
+    return counts;
+  }
+
+  // Statistics - Total counts
+  Future<int> getTotalCount() async {
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT COUNT(*) as count FROM ${AppConstants.tableDebts}',
+    );
+    return (result.first['count'] as int?) ?? 0;
+  }
+
+  // Statistics - Average debt amount
+  Future<double> getAverageAmount() async {
+    final db = await _dbHelper.database;
+    final result = await db.rawQuery(
+      'SELECT AVG(amount) as avg FROM ${AppConstants.tableDebts}',
+    );
+    return (result.first['avg'] as num?)?.toDouble() ?? 0.0;
+  }
 }

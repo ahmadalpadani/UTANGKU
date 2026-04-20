@@ -35,6 +35,18 @@ dependencies:
   # Utilities
   currency_formatter: ^2.2.1
 
+  # Notifications
+  flutter_local_notifications: ^18.0.1
+  timezone: ^0.10.0
+  flutter_timezone: ^3.0.1
+
+  # Storage
+  shared_preferences: ^2.3.5
+
+  # Security
+  local_auth: ^2.3.0
+  flutter_secure_storage: ^9.2.4
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

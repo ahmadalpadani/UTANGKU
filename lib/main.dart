@@ -2,11 +2,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
+import 'package:utangku_app/screens/auth/auth_wrapper.dart';
 import 'package:utangku_app/screens/home/splash_screen.dart';
+import 'package:utangku_app/services/auth_service.dart';
+import 'package:utangku_app/services/notification_service.dart';
 import 'package:utangku_app/utils/theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize services
+  await NotificationService().init();
+  await AuthService().init();
 
   runApp(const MyApp());
 }
@@ -16,8 +23,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) => DebtProvider(),
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(value: AuthService()),
+        ChangeNotifierProvider(create: (_) => DebtProvider()),
+      ],
       child: MaterialApp(
         title: 'UtangKU',
         debugShowCheckedModeBanner: false,
@@ -35,5 +45,15 @@ class MyApp extends StatelessWidget {
         home: const SplashScreen(),
       ),
     );
+  }
+}
+
+// Entry point that checks auth before showing main app
+class AppWithAuth extends StatelessWidget {
+  const AppWithAuth({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const AuthWrapper();
   }
 }

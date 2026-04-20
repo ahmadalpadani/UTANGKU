@@ -5,6 +5,7 @@ import 'package:utangku_app/screens/debt/add_debt_screen.dart';
 import 'package:utangku_app/screens/debt/debt_list_screen.dart';
 import 'package:utangku_app/screens/piutang/piutang_list_screen.dart';
 import 'package:utangku_app/screens/settings/settings_screen.dart';
+import 'package:utangku_app/screens/stats/stats_screen.dart';
 import 'package:utangku_app/utils/formatters.dart';
 import 'package:utangku_app/utils/theme.dart';
 
@@ -22,6 +23,7 @@ class _HomeScreenState extends State<HomeScreen> {
     const DashboardScreen(),
     const DebtListScreen(),
     const PiutangListScreen(),
+    const StatsScreen(),
     const SettingsScreen(),
   ];
 
@@ -52,6 +54,10 @@ class _HomeScreenState extends State<HomeScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.arrow_circle_up),
             label: 'Piutang',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.bar_chart),
+            label: 'Statistik',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.settings),

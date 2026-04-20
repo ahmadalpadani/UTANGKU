@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utangku_app/database/database_helper.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
-import 'package:utangku_app/screens/home/home_screen.dart';
+import 'package:utangku_app/screens/auth/auth_wrapper.dart';
 import 'package:utangku_app/utils/theme.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -19,7 +19,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    _initializeApp();
+    // Defer to after first frame to avoid setState during build
+    WidgetsBinding.instance.addPostFrameCallback((_) => _initializeApp());
   }
 
   Future<void> _initializeApp() async {
@@ -38,7 +39,7 @@ class _SplashScreenState extends State<SplashScreen> {
         await Future.delayed(const Duration(milliseconds: 500));
         if (mounted) {
           Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
+            MaterialPageRoute(builder: (context) => const AuthWrapper()),
           );
         }
       }

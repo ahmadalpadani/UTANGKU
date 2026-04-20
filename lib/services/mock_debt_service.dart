@@ -104,19 +104,19 @@ class MockDebtService {
 
   Future<List<DebtModel>> getAllDebts() async {
     await Future.delayed(const Duration(milliseconds: 100));
-    return List.from(_mockDebts)..sort((a, b) => b.updatedAt!.compareTo(a.updatedAt!));
+    return List.from(_mockDebts)..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   Future<List<DebtModel>> getDebtsByType(String type) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return _mockDebts.where((d) => d.type.value == type).toList()
-      ..sort((a, b) => b.updatedAt!.compareTo(a.updatedAt!));
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   Future<List<DebtModel>> getDebtsByStatus(String status) async {
     await Future.delayed(const Duration(milliseconds: 100));
     return _mockDebts.where((d) => d.status.value == status).toList()
-      ..sort((a, b) => b.updatedAt!.compareTo(a.updatedAt!));
+      ..sort((a, b) => b.updatedAt.compareTo(a.updatedAt));
   }
 
   Future<List<DebtModel>> getUnpaidDebts() async {
@@ -206,8 +206,58 @@ class MockDebtService {
     await Future.delayed(const Duration(milliseconds: 100));
     final q = query.toLowerCase();
     return _mockDebts.where((d) {
-      return (d.name?.toLowerCase().contains(q) ?? false) ||
+      return d.name.toLowerCase().contains(q) ||
           (d.description?.toLowerCase().contains(q) ?? false);
     }).toList();
+  }
+
+  // Stats - Monthly totals (last 6 months)
+  Future<Map<String, Map<String, double>>> getMonthlyTotals() async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    final now = DateTime.now();
+    final Map<String, Map<String, double>> result = {};
+    for (int i = 5; i >= 0; i--) {
+      final month = DateTime(now.year, now.month - i, 1);
+      final key = '${month.year}-${month.month.toString().padLeft(2, '0')}';
+      result[key] = {'UTANG': 0.0, 'PIUTANG': 0.0};
+    }
+    for (final debt in _mockDebts) {
+      final key = '${debt.createdAt.year}-${debt.createdAt.month.toString().padLeft(2, '0')}';
+      if (result.containsKey(key)) {
+        result[key]![debt.type.value] =
+            (result[key]![debt.type.value] ?? 0.0) + debt.amount;
+      }
+    }
+    return result;
+  }
+
+  // Stats - Count by status
+  Future<Map<String, int>> getStatusCounts() async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return {
+      'LUNAS': _mockDebts.where((d) => d.status == PaymentStatus.lunas).length,
+      'BELUM_LUNAS': _mockDebts.where((d) => d.status == PaymentStatus.belumLunas).length,
+    };
+  }
+
+  // Stats - Count by type
+  Future<Map<String, int>> getTypeCounts() async {
+    await Future.delayed(const Duration(milliseconds: 50));
+    return {
+      'UTANG': _mockDebts.where((d) => d.type == DebtType.utang).length,
+      'PIUTANG': _mockDebts.where((d) => d.type == DebtType.piutang).length,
+    };
+  }
+
+  // Stats - Total count
+  Future<int> getTotalCount() async {
+    return _mockDebts.length;
+  }
+
+  // Stats - Average amount
+  Future<double> getAverageAmount() async {
+    if (_mockDebts.isEmpty) return 0.0;
+    final total = _mockDebts.fold<double>(0.0, (sum, d) => sum + d.amount);
+    return total / _mockDebts.length;
   }
 }

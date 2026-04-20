@@ -27,4 +27,10 @@ class AppConstants {
   static const String keyPinCode = 'pin_code';
   static const String keyUseBiometric = 'use_biometric';
   static const String keyAutoLockTimeout = 'auto_lock_timeout';
+
+  // Notification Keys
+  static const String keyNotificationsEnabled = 'notifications_enabled';
+  static const String keyDueDateReminders = 'due_date_reminders';
+  static const String keyOverdueAlerts = 'overdue_alerts';
+  static const String keyReminderDaysBefore = 'reminder_days_before';
 }

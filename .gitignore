@@ -45,14 +45,8 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 
-SETUP_SUMMARY.md
-SKENARIO_PRESENTASI.md
-specapp.md
-UtangKu_Progrss_Report.docx
-UtangKu_Progrss_Report.pdf
-UtangKU.pdf
-
-generate_report_docx.py
-generate_report.py
-PROGRESS.md
+*.md
+*.docx
+*.pdf
+*.py
 
