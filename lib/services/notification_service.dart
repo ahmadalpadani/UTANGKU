@@ -107,6 +107,11 @@ class NotificationService {
 
     final notificationId = debt.id ?? debt.hashCode;
 
+    debugPrint('>>> [NOTIFICATION] Menjadwalkan notifikasi untuk: ${debt.name}');
+    debugPrint('>>> [NOTIFICATION] ID: $notificationId');
+    debugPrint('>>> [NOTIFICATION] Jatuh tempo: ${debt.dueDate}');
+    debugPrint('>>> [NOTIFICATION] Akan muncul: $scheduledDate');
+
     const androidDetails = AndroidNotificationDetails(
       _dueDateChannelId,
       'Jatuh Tempo',
@@ -138,6 +143,8 @@ class NotificationService {
           UILocalNotificationDateInterpretation.absoluteTime,
       payload: 'due_date_${debt.id}',
     );
+
+    debugPrint('>>> [NOTIFICATION] Notifikasi berhasil dijadwalkan!');
   }
 
   /// Schedule an overdue notification (for debts past due date)
@@ -180,6 +187,9 @@ class NotificationService {
 
   /// Schedule notifications for all unpaid debts
   Future<void> scheduleAllReminders(List<DebtModel> debts) async {
+    debugPrint('>>> [NOTIFICATION] Menjadwalkan semua notifikasi...');
+    debugPrint('>>> [NOTIFICATION] Total utang/piutang: ${debts.length}');
+
     await cancelAllNotifications();
 
     for (final debt in debts) {
@@ -191,16 +201,20 @@ class NotificationService {
         }
       }
     }
+
+    debugPrint('>>> [NOTIFICATION] Selesai menjadwalkan notifikasi');
   }
 
   /// Cancel notification for a specific debt
   Future<void> cancelReminder(int debtId) async {
+    debugPrint('>>> [NOTIFICATION] Membatalkan notifikasi ID: $debtId');
     await _notifications.cancel(debtId);
     await _notifications.cancel(debtId + 100000); // overdue offset
   }
 
   /// Cancel all scheduled notifications
   Future<void> cancelAllNotifications() async {
+    debugPrint('>>> [NOTIFICATION] Membatalkan semua notifikasi');
     await _notifications.cancelAll();
   }
 
@@ -213,5 +227,42 @@ class NotificationService {
       9, // 9:00 AM
       0,
     );
+  }
+
+  /// Show a test notification immediately (for testing in simulator)
+  Future<void> showTestNotification() async {
+    if (!_isInitialized) await init();
+
+    const androidDetails = AndroidNotificationDetails(
+      _dueDateChannelId,
+      'Test Notifikasi',
+      channelDescription: 'Test notifikasi dari UtangKU',
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const iosDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: iosDetails,
+    );
+
+    debugPrint('>>> [NOTIFICATION] Mengirim notifikasi test...');
+
+    await _notifications.show(
+      999999, // Unique ID untuk test
+      '🎉 Test Notifikasi',
+      'Notifikasi berhasil dikirim! UtangKU berjalan dengan baik.',
+      details,
+      payload: 'test_notification',
+    );
+
+    debugPrint('>>> [NOTIFICATION] Notifikasi test berhasil dikirim!');
   }
 }

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
-import 'package:utangku_app/screens/lock/lock_screen.dart';
 import 'package:utangku_app/services/auth_service.dart';
 import 'package:utangku_app/services/notification_service.dart';
 import 'package:utangku_app/utils/theme.dart';
@@ -16,8 +15,6 @@ class SettingsScreen extends StatefulWidget {
 class _SettingsScreenState extends State<SettingsScreen> {
   final AuthService _authService = AuthService();
   bool _permissionGranted = false;
-  bool _biometricAvailable = false;
-  String _biometricLabel = 'Biometric';
 
   @override
   void initState() {
@@ -27,47 +24,187 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _init() async {
     _permissionGranted = await NotificationService().isEnabled();
-    _biometricAvailable = await _authService.isBiometricAvailable();
-    if (_biometricAvailable) {
-      _biometricLabel = await _authService.getBiometricLabel();
-    }
     if (mounted) setState(() {});
   }
 
   Future<void> _setupPin() async {
-    final pin = await Navigator.push<String>(
-      context,
-      MaterialPageRoute(
-        builder: (ctx) => LockScreen(
-          mode: LockScreenMode.setup,
-          onPinEntered: (enteredPin) {
-            Navigator.pop(ctx, enteredPin);
-          },
-        ),
-      ),
+    // Step 1: Get first PIN
+    final firstPin = await _showPinDialog(
+      title: 'Buat PIN Baru',
+      subtitle: 'Masukkan PIN 6 digit untuk mengamankan aplikasi',
+      isConfirm: false,
     );
 
-    if (pin == null) return;
+    if (firstPin == null || !mounted) return;
 
-    final confirmed = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (ctx) => LockScreen(
-          mode: LockScreenMode.confirm,
-          initialPin: pin,
-          onSuccess: () => Navigator.pop(ctx, true),
-        ),
-      ),
+    // Step 2: Confirm PIN
+    final confirmPin = await _showPinDialog(
+      title: 'Konfirmasi PIN',
+      subtitle: 'Masukkan PIN yang sama untuk konfirmasi',
+      isConfirm: true,
+      initialPin: firstPin,
     );
 
-    if (confirmed == true) {
+    if (confirmPin == null || !mounted) return;
+
+    // Step 3: Save PIN
+    final saved = await _authService.setPin(confirmPin);
+    if (mounted) {
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('PIN berhasil disimpan!'),
-          backgroundColor: AppTheme.success,
+        SnackBar(
+          content: Text(saved ? 'PIN berhasil disimpan!' : 'Gagal menyimpan PIN'),
+          backgroundColor: saved ? AppTheme.success : AppTheme.error,
         ),
       );
     }
+  }
+
+  Future<String?> _showPinDialog({
+    required String title,
+    required String subtitle,
+    required bool isConfirm,
+    String? initialPin,
+  }) async {
+    String enteredPin = '';
+    String errorMessage = '';
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: AppTheme.primaryOrange,
+          title: Text(
+            title,
+            style: const TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                subtitle,
+                style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+              ),
+              const SizedBox(height: 24),
+              // PIN dots
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(6, (index) {
+                  final isFilled = index < enteredPin.length;
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 6),
+                    width: isFilled ? 16 : 14,
+                    height: isFilled ? 16 : 14,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isFilled ? Colors.white : Colors.white.withValues(alpha: 0.3),
+                      border: Border.all(color: Colors.white, width: 2),
+                    ),
+                  );
+                }),
+              ),
+              if (errorMessage.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  errorMessage,
+                  style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                ),
+              ],
+              const SizedBox(height: 24),
+              // Keypad
+              _buildDialogKeypad(ctx, (key) {
+                if (enteredPin.length < 6) {
+                  setDialogState(() {
+                    enteredPin += key;
+                    errorMessage = '';
+                  });
+                  if (enteredPin.length == 6) {
+                    _handlePinEntry(ctx, enteredPin, isConfirm, initialPin);
+                  }
+                }
+              }, () {
+                if (enteredPin.isNotEmpty) {
+                  setDialogState(() {
+                    enteredPin = enteredPin.substring(0, enteredPin.length - 1);
+                    errorMessage = '';
+                  });
+                }
+              }),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text(
+                'Batal',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handlePinEntry(BuildContext ctx, String pin, bool isConfirm, String? initialPin) {
+    if (isConfirm) {
+      if (pin == initialPin) {
+        Navigator.pop(ctx, pin);
+      } else {
+        setState(() {});
+        Navigator.pop(ctx, null);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('PIN tidak cocok. Silakan ulangi.'),
+            backgroundColor: AppTheme.error,
+          ),
+        );
+      }
+    } else {
+      Navigator.pop(ctx, pin);
+    }
+  }
+
+  Widget _buildDialogKeypad(BuildContext ctx, Function(String) onKeyTap, VoidCallback onBackspace) {
+    final keys = [
+      ['1', '2', '3'],
+      ['4', '5', '6'],
+      ['7', '8', '9'],
+      ['', '0', '⌫'],
+    ];
+
+    return Column(
+      children: keys.map((row) {
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: row.map((key) {
+            if (key.isEmpty) {
+              return const SizedBox(width: 56, height: 48);
+            }
+            return InkWell(
+              onTap: () => key == '⌫' ? onBackspace() : onKeyTap(key),
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: 56,
+                height: 48,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(24),
+                ),
+                child: key == '⌫'
+                    ? const Icon(Icons.backspace_outlined, color: Colors.white, size: 20)
+                    : Text(
+                        key,
+                        style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w500),
+                      ),
+              ),
+            );
+          }).toList(),
+        );
+      }).toList(),
+    );
   }
 
   Future<void> _removePin() async {
@@ -92,7 +229,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       ),
     );
 
-    if (confirm == true) {
+    if (confirm == true && mounted) {
       await _authService.removePin();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -120,6 +257,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
               // Notification Section
               _buildSectionHeader('Notifikasi'),
+              _buildListTile(
+                title: 'Test Notifikasi',
+                subtitle: 'Kirim notifikasi percobaan',
+                icon: Icons.notifications_active_outlined,
+                trailing: OutlinedButton(
+                  onPressed: () async {
+                    await NotificationService().showTestNotification();
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Notifikasi test dikirim!'),
+                          backgroundColor: AppTheme.success,
+                        ),
+                      );
+                    }
+                  },
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryOrange,
+                    side: const BorderSide(color: AppTheme.primaryOrange),
+                  ),
+                  child: const Text('Kirim'),
+                ),
+              ),
               _buildSwitchTile(
                 title: 'Aktifkan Notifikasi',
                 subtitle: 'Terima pengingat jatuh tempo',
@@ -130,13 +290,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     final granted = await NotificationService().requestPermission();
                     if (!granted) {
                       if (!mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text(
-                            'Izin notifikasi ditolak. Aktifkan di Pengaturan HP.'),
-                      ),
-                    );
-                    return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                              'Izin notifikasi ditolak. Aktifkan di Pengaturan HP.'),
+                        ),
+                      );
+                      return;
                     }
                     if (mounted) setState(() => _permissionGranted = true);
                   }
@@ -170,39 +330,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
               if (_authService.hasPin) ...[
                 _buildListTile(
                   title: 'Kunci Aplikasi (PIN)',
-                  subtitle: 'Aktif — ${_authService.hasPin ? "Ya" : "Tidak"}',
+                  subtitle: 'Aktif — Ya',
                   icon: Icons.lock_outline,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (_biometricAvailable)
-                        Padding(
-                          padding: const EdgeInsets.only(right: 8),
-                          child: Switch(
-                            value: _authService.useBiometric,
-                            activeTrackColor: AppTheme.primaryOrange,
-                            onChanged: (value) async {
-                              await _authService.setBiometric(value);
-                              setState(() {});
-                            },
-                          ),
-                        ),
-                      TextButton(
-                        onPressed: _removePin,
-                        child: const Text(
-                          'Hapus',
-                          style: TextStyle(color: AppTheme.error),
-                        ),
-                      ),
-                    ],
+                  trailing: TextButton(
+                    onPressed: _removePin,
+                    child: const Text(
+                      'Hapus',
+                      style: TextStyle(color: AppTheme.error),
+                    ),
                   ),
                 ),
-                if (_biometricAvailable && _authService.useBiometric)
-                  _buildListTile(
-                    title: _biometricLabel,
-                    subtitle: 'Gunakan $_biometricLabel untuk buka aplikasi',
-                    icon: Icons.fingerprint,
-                  ),
               ] else ...[
                 _buildListTile(
                   title: 'Kunci Aplikasi (PIN)',
@@ -217,32 +354,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: const Text('Aktifkan'),
                   ),
                 ),
-                _buildListTile(
-                  title: _biometricLabel,
-                  subtitle: _biometricAvailable
-                      ? 'Aktifkan PIN terlebih dahulu'
-                      : 'Tidak tersedia di perangkat ini',
-                  icon: Icons.fingerprint,
-                  enabled: false,
-                ),
               ],
-
-              const Divider(height: 32),
-
-              // Data Section
-              _buildSectionHeader('Data'),
-              _buildInfoTile(
-                title: 'Export Data (CSV/PDF)',
-                subtitle: 'Belum tersedia',
-                icon: Icons.download_outlined,
-                trailing: const _ComingSoonChip(),
-              ),
-              _buildInfoTile(
-                title: 'Import Data',
-                subtitle: 'Belum tersedia',
-                icon: Icons.upload_outlined,
-                trailing: const _ComingSoonChip(),
-              ),
 
               const Divider(height: 32),
 
@@ -340,29 +452,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
       title: Text(title),
       subtitle: Text(subtitle, style: const TextStyle(fontSize: 12)),
       trailing: trailing,
-    );
-  }
-}
-
-class _ComingSoonChip extends StatelessWidget {
-  const _ComingSoonChip();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.grey[200],
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Text(
-        'Segera',
-        style: TextStyle(
-          color: Colors.grey[600],
-          fontSize: 11,
-          fontWeight: FontWeight.w500,
-        ),
-      ),
     );
   }
 }

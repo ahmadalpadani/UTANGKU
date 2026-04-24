@@ -59,6 +59,44 @@ class DebtProvider with ChangeNotifier {
   int get utangCount => _typeCounts['UTANG'] ?? 0;
   int get piutangCount => _typeCounts['PIUTANG'] ?? 0;
 
+  // Utang stats
+  int get utangDueThisWeek {
+    final now = DateTime.now();
+    final endOfWeek = now.add(Duration(days: 7 - now.weekday));
+    return _utangList.where((d) =>
+      d.dueDate != null &&
+      d.status == PaymentStatus.belumLunas &&
+      d.dueDate!.isAfter(now.subtract(const Duration(days: 1))) &&
+      d.dueDate!.isBefore(endOfWeek.add(const Duration(days: 1)))
+    ).length;
+  }
+
+  DebtModel? get largestUtang {
+    final unpaid = _utangList.where((d) => d.status == PaymentStatus.belumLunas).toList();
+    if (unpaid.isEmpty) return null;
+    unpaid.sort((a, b) => b.amount.compareTo(a.amount));
+    return unpaid.first;
+  }
+
+  // Piutang stats
+  int get piutangDueThisWeek {
+    final now = DateTime.now();
+    final endOfWeek = now.add(Duration(days: 7 - now.weekday));
+    return _piutangList.where((d) =>
+      d.dueDate != null &&
+      d.status == PaymentStatus.belumLunas &&
+      d.dueDate!.isAfter(now.subtract(const Duration(days: 1))) &&
+      d.dueDate!.isBefore(endOfWeek.add(const Duration(days: 1)))
+    ).length;
+  }
+
+  DebtModel? get largestPiutang {
+    final unpaid = _piutangList.where((d) => d.status == PaymentStatus.belumLunas).toList();
+    if (unpaid.isEmpty) return null;
+    unpaid.sort((a, b) => b.amount.compareTo(a.amount));
+    return unpaid.first;
+  }
+
   double get paidPercentage {
     if (_totalCount == 0) return 0.0;
     return (paidCount / _totalCount) * 100;

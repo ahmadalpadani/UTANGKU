@@ -135,14 +135,17 @@ class _LockScreenState extends State<LockScreen> {
           if (!mounted) return;
           setState(() => _isLoading = false);
           if (saved) {
+            // Show snackbar first, then pop
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('PIN berhasil disimpan!'),
                 backgroundColor: AppTheme.success,
               ),
             );
-            widget.onSuccess?.call();
+            // Just pop this confirm screen
+            Navigator.pop(context, true);
           } else {
+            if (!mounted) return;
             setState(() {
               _enteredPin = '';
               _errorMessage = 'Gagal menyimpan PIN. Coba lagi.';

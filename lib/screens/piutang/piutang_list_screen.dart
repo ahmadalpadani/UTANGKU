@@ -71,21 +71,19 @@ class _PiutangListScreenState extends State<PiutangListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (filteredPiutang.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
           return Column(
             children: [
               _buildFilterChips(context),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredPiutang.length,
-                  itemBuilder: (context, index) {
-                    return _buildPiutangCard(context, filteredPiutang[index], provider);
-                  },
-                ),
+                child: filteredPiutang.isEmpty
+                    ? _buildEmptyState(context)
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredPiutang.length,
+                        itemBuilder: (context, index) {
+                          return _buildPiutangCard(context, filteredPiutang[index], provider);
+                        },
+                      ),
               ),
             ],
           );
@@ -185,6 +183,8 @@ class _PiutangListScreenState extends State<PiutangListScreen> {
                       children: [
                         Text(
                           debt.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -193,6 +193,8 @@ class _PiutangListScreenState extends State<PiutangListScreen> {
                           const SizedBox(height: 2),
                           Text(
                             debt.category!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Colors.grey[600],
                                 ),
@@ -201,7 +203,11 @@ class _PiutangListScreenState extends State<PiutangListScreen> {
                       ],
                     ),
                   ),
-                  _buildStatusChip(debt.status),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: _buildStatusChip(debt.status),
+                  ),
                 ],
               ),
               const Divider(height: 16),

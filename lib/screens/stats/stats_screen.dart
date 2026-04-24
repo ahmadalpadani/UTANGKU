@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
+import 'package:utangku_app/models/debt_model.dart';
 import 'package:utangku_app/utils/formatters.dart';
 import 'package:utangku_app/utils/theme.dart';
 
@@ -33,11 +34,19 @@ class StatsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Summary Cards
-                  _buildSummaryCards(context, provider),
+                  // Section: Utang
+                  _buildSectionHeader(context, 'Utang', Icons.arrow_downward, AppTheme.utangColor),
+                  const SizedBox(height: 12),
+                  _buildUtangCards(context, provider),
                   const SizedBox(height: 24),
 
-                  // Utang vs Piutang Pie Chart
+                  // Section: Piutang
+                  _buildSectionHeader(context, 'Piutang', Icons.arrow_upward, AppTheme.piutangColor),
+                  const SizedBox(height: 12),
+                  _buildPiutangCards(context, provider),
+                  const SizedBox(height: 24),
+
+                  // Pie Chart: Perbandingan
                   Text(
                     'Perbandingan Utang & Piutang',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -48,7 +57,7 @@ class StatsScreen extends StatelessWidget {
                   _buildTypePieChart(context, provider),
                   const SizedBox(height: 24),
 
-                  // Monthly Bar Chart
+                  // Bar Chart: Trend Bulanan
                   Text(
                     'Trend Bulanan',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
@@ -66,16 +75,6 @@ class StatsScreen extends StatelessWidget {
                   _buildMonthlyBarChart(context, provider),
                   const SizedBox(height: 24),
 
-                  // Status Pie Chart
-                  Text(
-                    'Status Pembayaran',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                  ),
-                  const SizedBox(height: 12),
-                  _buildStatusPieChart(context, provider),
-                  const SizedBox(height: 24),
                 ],
               ),
             ),
@@ -85,32 +84,23 @@ class StatsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildEmptyState(BuildContext context) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.bar_chart, size: 80, color: Colors.grey[300]),
-          const SizedBox(height: 16),
-          Text(
-            'Belum ada data',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  color: Colors.grey[600],
-                ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Tambahkan transaksi untuk melihat statistik',
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: Colors.grey[500],
-                ),
-          ),
-        ],
-      ),
+  Widget _buildSectionHeader(BuildContext context, String title, IconData icon, Color color) {
+    return Row(
+      children: [
+        Icon(icon, color: color, size: 24),
+        const SizedBox(width: 8),
+        Text(
+          title,
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: color,
+              ),
+        ),
+      ],
     );
   }
 
-  Widget _buildSummaryCards(BuildContext context, DebtProvider provider) {
+  Widget _buildUtangCards(BuildContext context, DebtProvider provider) {
     return Column(
       children: [
         Row(
@@ -118,20 +108,20 @@ class StatsScreen extends StatelessWidget {
             Expanded(
               child: _buildStatCard(
                 context,
-                'Total Transaksi',
-                provider.totalCount.toString(),
-                Icons.receipt_long,
-                AppTheme.primaryOrange,
+                'Total Utang',
+                CurrencyFormatter.format(provider.totalUnpaidUtang),
+                Icons.account_balance_wallet,
+                AppTheme.utangColor,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
                 context,
-                'Rata-rata Nominal',
-                CurrencyFormatter.format(provider.averageAmount),
-                Icons.calculate,
-                Colors.blue,
+                'Jumlah',
+                '${provider.utangCount} transaksi',
+                Icons.receipt,
+                AppTheme.utangColor,
               ),
             ),
           ],
@@ -142,20 +132,72 @@ class StatsScreen extends StatelessWidget {
             Expanded(
               child: _buildStatCard(
                 context,
-                'Tuntas',
-                '${provider.paidCount} (${provider.paidPercentage.toStringAsFixed(0)}%)',
-                Icons.check_circle,
-                AppTheme.success,
+                'Jatuh Tempo Minggu Ini',
+                '${provider.utangDueThisWeek} transaksi',
+                Icons.event,
+                provider.utangDueThisWeek > 0 ? AppTheme.warning : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildLargestCard(
+                context,
+                'Terbesar',
+                provider.largestUtang,
+                AppTheme.utangColor,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPiutangCards(BuildContext context, DebtProvider provider) {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                context,
+                'Total Piutang',
+                CurrencyFormatter.format(provider.totalUnpaidPiutang),
+                Icons.account_balance_wallet,
+                AppTheme.piutangColor,
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: _buildStatCard(
                 context,
-                'Belum Tuntas',
-                '${provider.unpaidCount} (${provider.unpaidPercentage.toStringAsFixed(0)}%)',
-                Icons.pending,
-                AppTheme.warning,
+                'Jumlah',
+                '${provider.piutangCount} transaksi',
+                Icons.receipt,
+                AppTheme.piutangColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildStatCard(
+                context,
+                'Jatuh Tempo Minggu Ini',
+                '${provider.piutangDueThisWeek} transaksi',
+                Icons.event,
+                provider.piutangDueThisWeek > 0 ? AppTheme.warning : Colors.grey,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildLargestCard(
+                context,
+                'Terbesar',
+                provider.largestPiutang,
+                AppTheme.piutangColor,
               ),
             ),
           ],
@@ -187,6 +229,8 @@ class StatsScreen extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Colors.grey[600],
                         ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ],
@@ -194,13 +238,95 @@ class StatsScreen extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               value,
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: color,
                   ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildLargestCard(
+    BuildContext context,
+    String title,
+    DebtModel? debt,
+    Color color,
+  ) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.star, color: color, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Colors.grey[600],
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            if (debt != null) ...[
+              Text(
+                debt.name,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                CurrencyFormatter.format(debt.amount),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: color,
+                    ),
+              ),
+            ] else ...[
+              Text(
+                '-',
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey,
+                    ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.bar_chart, size: 80, color: Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            'Belum ada data',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Tambahkan transaksi untuk melihat statistik',
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.grey[500],
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -400,68 +526,6 @@ class StatsScreen extends StatelessWidget {
                 _buildLegendItem('Utang', AppTheme.utangColor, null),
                 const SizedBox(width: 24),
                 _buildLegendItem('Piutang', AppTheme.piutangColor, null),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusPieChart(BuildContext context, DebtProvider provider) {
-    final paid = provider.paidCount;
-    final unpaid = provider.unpaidCount;
-    final total = paid + unpaid;
-
-    if (total == 0) {
-      return _buildNoDataCard(context, 'Tidak ada data status');
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            SizedBox(
-              height: 200,
-              child: PieChart(
-                PieChartData(
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 50,
-                  sections: [
-                    PieChartSectionData(
-                      color: AppTheme.success,
-                      value: paid.toDouble(),
-                      title: '$paid',
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      radius: 60,
-                    ),
-                    PieChartSectionData(
-                      color: AppTheme.warning,
-                      value: unpaid.toDouble(),
-                      title: '$unpaid',
-                      titleStyle: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                      ),
-                      radius: 60,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildLegendItem('Lunas', AppTheme.success, '$paid transaksi'),
-                const SizedBox(width: 24),
-                _buildLegendItem('Belum Lunas', AppTheme.warning, '$unpaid transaksi'),
               ],
             ),
           ],

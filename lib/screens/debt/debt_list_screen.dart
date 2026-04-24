@@ -4,7 +4,6 @@ import 'package:utangku_app/models/debt_model.dart';
 import 'package:utangku_app/models/payment_status.dart';
 import 'package:utangku_app/providers/debt_provider.dart';
 import 'package:utangku_app/screens/debt/add_debt_screen.dart';
-import 'package:utangku_app/services/whatsapp_service.dart';
 import 'package:utangku_app/utils/formatters.dart';
 import 'package:utangku_app/utils/theme.dart';
 
@@ -16,7 +15,6 @@ class DebtListScreen extends StatefulWidget {
 }
 
 class _DebtListScreenState extends State<DebtListScreen> {
-  final WhatsAppService _whatsappService = WhatsAppService();
   String _filterStatus = 'SEMUA'; // SEMUA, BELUM_LUNAS, LUNAS
 
   @override
@@ -71,21 +69,19 @@ class _DebtListScreenState extends State<DebtListScreen> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (filteredDebts.isEmpty) {
-            return _buildEmptyState(context);
-          }
-
           return Column(
             children: [
               _buildFilterChips(context),
               Expanded(
-                child: ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: filteredDebts.length,
-                  itemBuilder: (context, index) {
-                    return _buildDebtCard(context, filteredDebts[index], provider);
-                  },
-                ),
+                child: filteredDebts.isEmpty
+                    ? _buildEmptyState(context)
+                    : ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: filteredDebts.length,
+                        itemBuilder: (context, index) {
+                          return _buildDebtCard(context, filteredDebts[index], provider);
+                        },
+                      ),
               ),
             ],
           );
@@ -185,6 +181,8 @@ class _DebtListScreenState extends State<DebtListScreen> {
                       children: [
                         Text(
                           debt.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -193,6 +191,8 @@ class _DebtListScreenState extends State<DebtListScreen> {
                           const SizedBox(height: 2),
                           Text(
                             debt.category!,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(
                                   color: Colors.grey[600],
                                 ),
@@ -201,7 +201,11 @@ class _DebtListScreenState extends State<DebtListScreen> {
                       ],
                     ),
                   ),
-                  _buildStatusChip(debt.status),
+                  const SizedBox(width: 8),
+                  Flexible(
+                    fit: FlexFit.loose,
+                    child: _buildStatusChip(debt.status),
+                  ),
                 ],
               ),
               const Divider(height: 16),
@@ -275,36 +279,19 @@ class _DebtListScreenState extends State<DebtListScreen> {
                 ),
               ],
               const SizedBox(height: 12),
-              Row(
-                children: [
-                  if (!isPaid && debt.phoneNumber != null) ...[
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _sendWhatsAppReminder(debt),
-                        icon: const Icon(Icons.chat),
-                        label: const Text('Tagih'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.success,
-                          side: const BorderSide(color: AppTheme.success),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: () => _togglePaymentStatus(debt, provider),
-                      icon: Icon(isPaid ? Icons.cancel : Icons.check_circle),
-                      label: Text(isPaid ? 'Tandai Belum' : 'Tandai Lunas'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: isPaid ? AppTheme.utangColor : AppTheme.success,
-                        side: BorderSide(
-                          color: isPaid ? AppTheme.utangColor : AppTheme.success,
-                        ),
-                      ),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () => _togglePaymentStatus(debt, provider),
+                  icon: Icon(isPaid ? Icons.cancel : Icons.check_circle),
+                  label: Text(isPaid ? 'Tandai Belum' : 'Tandai Lunas'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: isPaid ? AppTheme.utangColor : AppTheme.success,
+                    side: BorderSide(
+                      color: isPaid ? AppTheme.utangColor : AppTheme.success,
                     ),
                   ),
-                ],
+                ),
               ),
             ],
           ),
@@ -423,18 +410,4 @@ class _DebtListScreenState extends State<DebtListScreen> {
     });
   }
 
-  void _sendWhatsAppReminder(DebtModel debt) {
-    try {
-      _whatsappService.sendReminder(debt);
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Gagal membuka WhatsApp: $e'),
-            backgroundColor: AppTheme.error,
-          ),
-        );
-      }
-    }
-  }
 }
